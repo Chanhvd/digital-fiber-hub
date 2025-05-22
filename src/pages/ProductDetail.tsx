@@ -7,68 +7,29 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { featuredProducts } from '@/lib/utils';
-
-// Extended product data for detail page
-interface ProductDetailData {
-  id: string;
-  title: string;
-  code: string;
-  description: string;
-  imageUrl: string;
-  category: string;
-  images?: string[];
-  fullDescription?: string;
-  specifications?: Array<{ name: string; value: string }>;
-  features?: string[];
-  documents?: Array<{ name: string; url: string }>;
-}
+import { productService } from '@/lib/productService';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<ProductDetailData | null>(null);
+  const [product, setProduct] = useState<any | null>(null);
   const [activeImage, setActiveImage] = useState<string>('');
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   
   useEffect(() => {
-    // In a real app, this would be an API call
-    const foundProduct = featuredProducts.find(p => p.id === id);
-    
-    if (foundProduct) {
-      const extendedProduct: ProductDetailData = {
-        ...foundProduct,
-        images: [
-          foundProduct.imageUrl,
-          "https://placehold.co/800x600?text=Product+Image+2",
-          "https://placehold.co/800x600?text=Product+Image+3",
-        ],
-        fullDescription: `The ${foundProduct.title} is a high-quality telecommunications equipment designed for professional use in network infrastructure. Built with premium materials and advanced technology, it offers reliable performance and durability in various environments.
-        
-        This product is fully compatible with industry standards and can be integrated seamlessly into existing networks. Its efficient design ensures optimal performance while minimizing space requirements and power consumption.`,
-        specifications: [
-          { name: "Dimensions", value: "48.26 cm × 43.18 cm × 4.45 cm" },
-          { name: "Weight", value: "3.5 kg" },
-          { name: "Operating Temperature", value: "-10°C to 60°C" },
-          { name: "Material", value: "Aluminum alloy, steel" },
-          { name: "Standard Compliance", value: "ISO 9001, IEC 61754-20, TIA-568" },
-          { name: "Warranty", value: "2 years" },
-        ],
-        features: [
-          "High-density port configuration for space efficiency",
-          "Tool-less installation and maintenance",
-          "Built-in cable management system",
-          "Modular design allowing for future expansion",
-          "Clear port labeling for easy identification",
-          "Robust construction for long service life",
-        ],
-        documents: [
-          { name: "Product Datasheet", url: "#" },
-          { name: "Installation Guide", url: "#" },
-          { name: "Technical Specifications", url: "#" },
-        ]
-      };
+    if (id) {
+      const foundProduct = productService.getProductById(id);
       
-      setProduct(extendedProduct);
-      setActiveImage(extendedProduct.imageUrl);
+      if (foundProduct) {
+        setProduct(foundProduct);
+        setActiveImage(foundProduct.imageUrl);
+        
+        // Get related products (same category, exclude current product)
+        const published = productService.getPublishedProducts();
+        const related = published
+          .filter(p => p.category === foundProduct.category && p.id !== id)
+          .slice(0, 4);
+        setRelatedProducts(related);
+      }
     }
   }, [id]);
   
@@ -80,7 +41,7 @@ const ProductDetail: React.FC = () => {
           <Section>
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-telecom-blue">Product not found</h2>
-              <p className="text-gray-600 mt-4 mb-8">The requested product could not be found.</p>
+              <p className="text-gray-600 mt-4 mb-8">The requested product could not be found or is no longer available.</p>
               <Link to="/products">
                 <Button className="bg-telecom-blue hover:bg-telecom-light-blue text-white">
                   Return to Products
@@ -91,6 +52,19 @@ const ProductDetail: React.FC = () => {
         </main>
         <Footer />
       </div>
+    );
+  }
+  
+  // Create an array of product images
+  const productImages = [product.imageUrl];
+  if (product.images && product.images.length > 0) {
+    // Add additional images if they exist
+    productImages.push(...product.images.filter((img: string) => img !== product.imageUrl));
+  } else {
+    // Add placeholder images if no additional images
+    productImages.push(
+      "https://placehold.co/800x600?text=Product+Image+2",
+      "https://placehold.co/800x600?text=Product+Image+3"
     );
   }
   
@@ -120,48 +94,50 @@ const ProductDetail: React.FC = () => {
                 />
               </div>
               
-              {product.images && product.images.length > 1 && (
-                <div className="flex space-x-4">
-                  {product.images.map((image, index) => (
-                    <button 
-                      key={index}
-                      onClick={() => setActiveImage(image)}
-                      className={`border p-2 rounded-md ${activeImage === image ? 'border-telecom-blue' : 'border-gray-200'}`}
-                    >
-                      <img 
-                        src={image} 
-                        alt={`${product.title} - Image ${index + 1}`} 
-                        className="w-16 h-16 object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="flex space-x-4">
+                {productImages.map((image: string, index: number) => (
+                  <button 
+                    key={index}
+                    onClick={() => setActiveImage(image)}
+                    className={`border p-2 rounded-md transition-all duration-300 ${activeImage === image ? 'border-telecom-blue scale-105' : 'border-gray-200'}`}
+                  >
+                    <img 
+                      src={image} 
+                      alt={`${product.title} - Image ${index + 1}`} 
+                      className="w-16 h-16 object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
             
             {/* Product Information */}
             <div>
-              <h1 className="text-3xl font-bold text-telecom-blue mb-2">{product.title}</h1>
+              <h1 className="text-3xl font-bold text-telecom-blue mb-2 transition-transform duration-300 hover:translate-y-[-5px]">{product.title}</h1>
               <p className="text-gray-500 mb-4">Product Code: {product.code}</p>
               
-              <div className="bg-telecom-light-gray p-4 rounded-lg mb-6">
+              <div className="bg-telecom-light-gray p-4 rounded-lg mb-6 transition-all duration-300 hover:bg-telecom-light-gray/80">
                 <p className="text-gray-700">{product.description}</p>
               </div>
               
               <div className="mb-8">
                 <h2 className="text-lg font-semibold text-telecom-blue mb-2">Key Features:</h2>
                 <ul className="list-disc list-inside space-y-1 text-gray-700">
-                  {product.features?.slice(0, 3).map((feature, index) => (
-                    <li key={index}>{feature}</li>
-                  ))}
+                  {product.features ? (
+                    product.features.slice(0, 3).map((feature: string, index: number) => (
+                      <li key={index} className="transition-transform duration-300 hover:translate-x-1">{feature}</li>
+                    ))
+                  ) : (
+                    <li>High-quality fiber optic product</li>
+                  )}
                 </ul>
               </div>
               
               <div className="flex flex-wrap gap-4 mb-8">
-                <Button className="bg-telecom-blue hover:bg-telecom-light-blue text-white px-8">
+                <Button className="bg-telecom-blue hover:bg-telecom-light-blue text-white px-8 transition-transform duration-300 hover:scale-105">
                   Request Quotation
                 </Button>
-                <Button variant="outline" className="border-telecom-blue text-telecom-blue hover:bg-telecom-blue hover:text-white">
+                <Button variant="outline" className="border-telecom-blue text-telecom-blue hover:bg-telecom-blue hover:text-white transition-transform duration-300 hover:scale-105">
                   Add to Project
                 </Button>
               </div>
@@ -171,11 +147,11 @@ const ProductDetail: React.FC = () => {
                 <div className="border-t border-gray-200 pt-6">
                   <h2 className="text-lg font-semibold text-telecom-blue mb-3">Documentation:</h2>
                   <div className="space-y-2">
-                    {product.documents.map((doc, index) => (
+                    {product.documents.map((doc: { name: string; url: string }, index: number) => (
                       <a 
                         key={index} 
                         href={doc.url} 
-                        className="flex items-center text-telecom-blue hover:text-telecom-light-blue"
+                        className="flex items-center text-telecom-blue hover:text-telecom-light-blue transition-transform duration-300 hover:translate-x-1"
                       >
                         <FileText className="h-5 w-5 mr-2" />
                         <span>{doc.name}</span>
@@ -205,7 +181,7 @@ const ProductDetail: React.FC = () => {
               
               <TabsContent value="description" className="py-6">
                 <div className="prose max-w-none">
-                  <p className="text-gray-700 whitespace-pre-line">{product.fullDescription}</p>
+                  <p className="text-gray-700 whitespace-pre-line">{product.fullDescription || product.description}</p>
                 </div>
               </TabsContent>
               
@@ -213,62 +189,74 @@ const ProductDetail: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <tbody className="divide-y divide-gray-200">
-                      {product.specifications?.map((spec, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap bg-telecom-light-gray font-medium text-gray-700 w-1/3">
-                            {spec.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                            {spec.value}
+                      {product.specifications ? (
+                        product.specifications.map((spec: { name: string; value: string }, index: number) => (
+                          <tr key={index} className="transition-colors duration-300 hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap bg-telecom-light-gray font-medium text-gray-700 w-1/3">
+                              {spec.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                              {spec.value}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={2} className="px-6 py-4 text-center text-gray-500">
+                            Specifications not available
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
               </TabsContent>
               
               <TabsContent value="features" className="py-6">
-                <ul className="space-y-3">
-                  {product.features?.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-telecom-blue flex items-center justify-center text-white text-sm mr-3 mt-0.5">
-                        ✓
-                      </div>
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                {product.features && product.features.length > 0 ? (
+                  <ul className="space-y-3">
+                    {product.features.map((feature: string, index: number) => (
+                      <li key={index} className="flex items-start transition-transform duration-300 hover:translate-x-1">
+                        <div className="flex-shrink-0 h-5 w-5 rounded-full bg-telecom-blue flex items-center justify-center text-white text-sm mr-3 mt-0.5">
+                          ✓
+                        </div>
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500">Feature list not available</p>
+                )}
               </TabsContent>
             </Tabs>
           </div>
           
           {/* Related Products */}
-          <div className="mt-16">
-            <h2 className="section-title">Related Products</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts
-                .filter(p => p.id !== product.id)
-                .filter(p => p.category === product.category)
-                .slice(0, 4)
-                .map(p => (
-                  <div key={p.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                    <Link to={`/products/${p.id}`}>
-                      <img 
-                        src={p.imageUrl} 
-                        alt={p.title} 
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="p-4">
-                        <h3 className="text-lg font-semibold text-telecom-blue">{p.title}</h3>
-                        <p className="text-sm text-gray-500 mb-2">Code: {p.code}</p>
-                        <p className="text-sm text-gray-600 line-clamp-2">{p.description}</p>
-                      </div>
-                    </Link>
-                  </div>
+          {relatedProducts.length > 0 && (
+            <div className="mt-16">
+              <h2 className="section-title transition-all duration-300 hover:translate-y-[-5px] hover:text-telecom-light-blue">Related Products</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {relatedProducts.map(p => (
+                  <Link 
+                    key={p.id} 
+                    to={`/products/${p.id}`}
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <img 
+                      src={p.imageUrl} 
+                      alt={p.title} 
+                      className="w-full h-48 object-cover transition-transform hover:scale-105 duration-500"
+                    />
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-telecom-blue">{p.title}</h3>
+                      <p className="text-sm text-gray-500 mb-2">Code: {p.code}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2">{p.description}</p>
+                    </div>
+                  </Link>
                 ))}
+              </div>
             </div>
-          </div>
+          )}
         </Section>
       </main>
       

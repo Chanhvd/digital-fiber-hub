@@ -32,7 +32,7 @@ const Section: React.FC<SectionProps> = ({
             {title}
           </h2>
         )}
-        <div className="transition-opacity duration-300 hover:opacity-100 opacity-95">
+        <div className="transition-all duration-300 hover:opacity-100 opacity-95">
           {children}
         </div>
       </div>

@@ -1,80 +1,27 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Hero from '@/components/Hero';
 import Section from '@/components/Section';
 import ProductCard from '@/components/ProductCard';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { featuredProducts, productCategories } from '@/lib/utils';
+import { productCategories } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Expanding our product list for the products page
-const allProducts = [
-  ...featuredProducts,
-  {
-    id: 'odf-wall-mount-12',
-    title: 'Wall-Mount ODF 12 Ports',
-    code: 'ODF-W12',
-    description: 'Compact wall-mounted optical distribution frame with 12 ports, ideal for small office installations.',
-    imageUrl: 'https://placehold.co/400x300?text=ODF-W12',
-    category: 'odf',
-  },
-  {
-    id: 'odf-rack-48',
-    title: 'ODF Rack 48 Ports',
-    code: 'ODF-R48',
-    description: 'High-capacity 48-port optical distribution frame rack for large network installations.',
-    imageUrl: 'https://placehold.co/400x300?text=ODF-R48',
-    category: 'odf',
-  },
-  {
-    id: 'fiber-cable-mm',
-    title: 'Multi-Mode Fiber Cable',
-    code: 'FC-MM-1000',
-    description: 'Premium multi-mode fiber optic cable, 1000m roll, suitable for short-distance applications.',
-    imageUrl: 'https://placehold.co/400x300?text=FC-MM-1000',
-    category: 'fiber-cables',
-  },
-  {
-    id: 'fiber-cable-armored',
-    title: 'Armored Fiber Cable',
-    code: 'FC-ARM-500',
-    description: 'Heavy-duty armored fiber optic cable with enhanced protection for underground and outdoor applications.',
-    imageUrl: 'https://placehold.co/400x300?text=FC-ARM-500',
-    category: 'fiber-cables',
-  },
-  {
-    id: 'fiber-connectors-sc',
-    title: 'SC Fiber Connectors (10-pack)',
-    code: 'CON-SC-10',
-    description: 'Pack of 10 high-quality SC fiber optic connectors for reliable network connections.',
-    imageUrl: 'https://placehold.co/400x300?text=CON-SC-10',
-    category: 'accessories',
-  },
-  {
-    id: 'fiber-connectors-lc',
-    title: 'LC Fiber Connectors (10-pack)',
-    code: 'CON-LC-10',
-    description: 'Pack of 10 high-quality LC fiber optic connectors for reliable network connections.',
-    imageUrl: 'https://placehold.co/400x300?text=CON-LC-10',
-    category: 'accessories',
-  },
-  {
-    id: 'fiber-power-meter',
-    title: 'Fiber Optic Power Meter',
-    code: 'TEST-PM-1',
-    description: 'Handheld optical power meter for quick and accurate measurement of optical signal strength.',
-    imageUrl: 'https://placehold.co/400x300?text=TEST-PM-1',
-    category: 'testing-equipment',
-  }
-];
+import { productService } from '@/lib/productService';
 
 const Products: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
+  
+  useEffect(() => {
+    // Get only published products for the public site
+    const publishedProducts = productService.getPublishedProducts();
+    setProducts(publishedProducts);
+  }, []);
 
   const filteredProducts = activeCategory === 'all' 
-    ? allProducts 
-    : allProducts.filter(product => product.category === activeCategory);
+    ? products 
+    : products.filter(product => product.category === activeCategory);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -120,23 +67,8 @@ const Products: React.FC = () => {
               
               <TabsContent value="all" className="mt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredProducts.map((product) => (
-                    <ProductCard 
-                      key={product.id}
-                      id={product.id}
-                      title={product.title}
-                      code={product.code}
-                      description={product.description}
-                      imageUrl={product.imageUrl}
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-              
-              {productCategories.map((category) => (
-                <TabsContent key={category.id} value={category.id} className="mt-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredProducts.map((product) => (
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
                       <ProductCard 
                         key={product.id}
                         id={product.id}
@@ -145,7 +77,34 @@ const Products: React.FC = () => {
                         description={product.description}
                         imageUrl={product.imageUrl}
                       />
-                    ))}
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-12 text-gray-500">
+                      No products available in this category yet.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              {productCategories.map((category) => (
+                <TabsContent key={category.id} value={category.id} className="mt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <ProductCard 
+                          key={product.id}
+                          id={product.id}
+                          title={product.title}
+                          code={product.code}
+                          description={product.description}
+                          imageUrl={product.imageUrl}
+                        />
+                      ))
+                    ) : (
+                      <div className="col-span-full text-center py-12 text-gray-500">
+                        No products available in this category yet.
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               ))}
