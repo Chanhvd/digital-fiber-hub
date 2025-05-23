@@ -122,10 +122,7 @@ product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode f
                 </DialogContent>
               </Dialog>
               
-              <Button variant="outline" onClick={() => productService.downloadCSV('fiber_products.csv')} className="flex items-center gap-2">
-                <FileDown className="h-4 w-4" />
-                <span>Download Catalog (CSV)</span>
-              </Button>
+              
             </div>
           </div>
           
