@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Hero from '@/components/Hero';
 import Section from '@/components/Section';
@@ -12,23 +13,27 @@ import { FileUp, FileDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
 const Products: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [products, setProducts] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const productsPerPage = 8;
+
   useEffect(() => {
     // Get only published products for the public site
     const publishedProducts = productService.getPublishedProducts();
     setProducts(publishedProducts);
   }, []);
+
   const filteredProducts = activeCategory === 'all' ? products : products.filter(product => product.category === activeCategory);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const startIndex = (page - 1) * productsPerPage;
   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -60,6 +65,7 @@ const Products: React.FC = () => {
     };
     reader.readAsText(file);
   };
+
   const downloadSampleCSV = () => {
     // Create a minimal sample CSV
     const sampleCSV = `id,title,code,description,imageUrl,category,published,fullDescription
@@ -78,6 +84,7 @@ product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode f
     document.body.removeChild(link);
     toast.success('Sample CSV template downloaded');
   };
+
   return <div className="min-h-screen flex flex-col">
       <Header />
       
@@ -94,7 +101,10 @@ product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode f
             <div className="flex justify-center gap-4 mb-6">
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <FileUp className="h-4 w-4" />
+                    <span>Load Products from CSV</span>
+                  </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
@@ -121,8 +131,6 @@ product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode f
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              
-              
             </div>
           </div>
           
@@ -204,4 +212,5 @@ product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode f
       <Footer />
     </div>;
 };
+
 export default Products;
