@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash2, Plus, Search, Filter, Check, X } from 'lucide-react';
+import { Edit, Trash2, Plus, Search, Filter, Check, X, FileUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -22,6 +22,15 @@ import {
 import { productCategories } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Import the productService from our utils
 import { productService } from '@/lib/productService';
@@ -36,6 +45,7 @@ const ProductList: React.FC<ProductListProps> = ({ onEditProduct, onCreateProduc
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Load products on component mount
   useEffect(() => {
@@ -55,6 +65,63 @@ const ProductList: React.FC<ProductListProps> = ({ onEditProduct, onCreateProduc
     toast.success('Product deleted successfully');
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    
+    if (!file) {
+      toast.error('No file selected');
+      return;
+    }
+    
+    // Check if it's a CSV file
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      toast.error('Please select a valid CSV file');
+      return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const updatedProducts = productService.importFromCSV(content);
+        setProducts(updatedProducts);
+        setIsImportDialogOpen(false);
+        toast.success('Products imported from CSV successfully');
+      } catch (error) {
+        console.error('Error parsing CSV file:', error);
+        toast.error('Error parsing CSV file. Please check the format.');
+      }
+    };
+    
+    reader.onerror = () => {
+      toast.error('Error reading the file');
+    };
+    
+    reader.readAsText(file);
+  };
+
+  const downloadSampleCSV = () => {
+    // Create a minimal sample CSV
+    const sampleCSV = `id,title,code,description,imageUrl,category,published,fullDescription
+product-sample-1,"Fiber Optic Connector SC/APC","FO-CN-SCAPC-01","High-quality fiber optic connector for single-mode fiber","https://images.unsplash.com/photo-1599507082144-cc987841b0d0?q=80&w=1000","connectors",true,"High precision connector with low insertion loss"
+product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode fiber optic cable","https://images.unsplash.com/photo-1601131083572-bc8cb570c7c9?q=80&w=1000","cables",true,"Outdoor rated cable with armored protection"`;
+    
+    const blob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample-products.csv');
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Sample CSV template downloaded');
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           product.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -69,10 +136,50 @@ const ProductList: React.FC<ProductListProps> = ({ onEditProduct, onCreateProduc
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-telecom-blue">Product Management</h1>
-        <Button onClick={onCreateProduct} className="bg-telecom-blue hover:bg-telecom-light-blue">
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Product
-        </Button>
+        <div className="flex gap-2">
+          <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <FileUp className="h-4 w-4" />
+                <span>Import CSV</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Import Products from CSV</DialogTitle>
+                <DialogDescription>
+                  Upload a CSV file with product data to import. The file should include columns for id, title, code, description, imageUrl, category, published status, and fullDescription.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="csvFile" className="text-sm font-medium">
+                    Select CSV File
+                  </label>
+                  <input
+                    id="csvFile"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="border rounded p-2"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="sm:justify-between">
+                <Button type="button" variant="outline" onClick={downloadSampleCSV}>
+                  Download Sample
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setIsImportDialogOpen(false)}>
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button onClick={onCreateProduct} className="bg-telecom-blue hover:bg-telecom-light-blue">
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Product
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">

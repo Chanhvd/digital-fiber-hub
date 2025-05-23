@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Grid, Package, File, Plus, FileDown } from 'lucide-react';
+import { Grid, Package, File, Plus, FileDown, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { productService } from '@/lib/productService';
 import { toast } from 'sonner';
