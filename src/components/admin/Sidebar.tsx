@@ -1,7 +1,9 @@
 
 import React from 'react';
-import { Grid, Package, File, Plus } from 'lucide-react';
+import { Grid, Package, File, Plus, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { productService } from '@/lib/productService';
+import { toast } from 'sonner';
 
 interface SidebarProps {
   activeView: string;
@@ -16,15 +18,34 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, onCreateProdu
     { id: 'news', label: 'News', icon: File, disabled: true }
   ];
 
+  const handleExportCSV = () => {
+    try {
+      productService.downloadCSV();
+      toast.success('Products exported to CSV successfully');
+    } catch (error) {
+      toast.error('Failed to export products to CSV');
+      console.error(error);
+    }
+  };
+
   return (
     <aside className="bg-white w-full md:w-64 shadow-sm md:min-h-[calc(100vh-64px)]">
-      <div className="p-4">
+      <div className="p-4 space-y-2">
         <Button 
           onClick={onCreateProduct}
           className="w-full bg-telecom-blue hover:bg-telecom-light-blue flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           <span>New Product</span>
+        </Button>
+        
+        <Button
+          onClick={handleExportCSV}
+          variant="outline"
+          className="w-full flex items-center gap-2"
+        >
+          <FileDown className="h-4 w-4" />
+          <span>Export to CSV</span>
         </Button>
       </div>
       <nav>
