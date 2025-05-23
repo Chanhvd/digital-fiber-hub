@@ -8,10 +8,34 @@ import Footer from '@/components/Footer';
 import { productCategories } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { productService } from '@/lib/productService';
+import { Button } from '@/components/ui/button';
+import { FileUp, FileDown } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from 'sonner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const Products: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [products, setProducts] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const productsPerPage = 8;
   
   useEffect(() => {
     // Get only published products for the public site
@@ -22,6 +46,69 @@ const Products: React.FC = () => {
   const filteredProducts = activeCategory === 'all' 
     ? products 
     : products.filter(product => product.category === activeCategory);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+  const startIndex = (page - 1) * productsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    
+    if (!file) {
+      toast.error('No file selected');
+      return;
+    }
+    
+    // Check if it's a CSV file
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      toast.error('Please select a valid CSV file');
+      return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const updatedProducts = productService.importFromCSV(content);
+        const publishedProducts = updatedProducts.filter(p => p.published);
+        setProducts(publishedProducts);
+        setIsDialogOpen(false);
+        toast.success('Products loaded from CSV successfully');
+      } catch (error) {
+        console.error('Error parsing CSV file:', error);
+        toast.error('Error parsing CSV file. Please check the format.');
+      }
+    };
+    
+    reader.onerror = () => {
+      toast.error('Error reading the file');
+    };
+    
+    reader.readAsText(file);
+  };
+  
+  const downloadSampleCSV = () => {
+    // Create a minimal sample CSV
+    const sampleCSV = `id,title,code,description,imageUrl,category,published,fullDescription
+product-sample-1,"Fiber Optic Connector SC/APC","FO-CN-SCAPC-01","High-quality fiber optic connector for single-mode fiber","https://images.unsplash.com/photo-1599507082144-cc987841b0d0?q=80&w=1000","connectors",true,"High precision connector with low insertion loss"
+product-sample-2,"Fiber Cable 24 Core SM","FO-CB-SM24-01","24-core single-mode fiber optic cable","https://images.unsplash.com/photo-1601131083572-bc8cb570c7c9?q=80&w=1000","cables",true,"Outdoor rated cable with armored protection"`;
+    
+    const blob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample-products.csv');
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Sample CSV template downloaded');
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -37,9 +124,59 @@ const Products: React.FC = () => {
         <Section bgColor="light-gray">
           <div className="max-w-3xl mx-auto text-center mb-8">
             <h2 className="text-3xl font-bold text-telecom-blue mb-4">Telecommunications and Fiber Optic Equipment</h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-gray-600 mb-6">
               FiberTech Solutions offers a comprehensive range of high-quality fiber optic products for all your network infrastructure needs. Our product catalog includes optical distribution frames, fiber cables, connectors, and testing equipment from leading manufacturers.
             </p>
+            
+            <div className="flex justify-center gap-4 mb-6">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <FileUp className="h-4 w-4" />
+                    <span>Load Products from CSV</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Import Products from CSV</DialogTitle>
+                    <DialogDescription>
+                      Upload a CSV file with product data to display on this page. The file should include columns for id, title, code, description, imageUrl, category, and published status.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="csvFile" className="text-sm font-medium">
+                        Select CSV File
+                      </label>
+                      <input
+                        id="csvFile"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileUpload}
+                        className="border rounded p-2"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter className="sm:justify-between">
+                    <Button type="button" variant="outline" onClick={downloadSampleCSV}>
+                      <FileDown className="mr-2 h-4 w-4" /> Download Sample
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              <Button
+                variant="outline"
+                onClick={() => productService.downloadCSV('fiber_products.csv')}
+                className="flex items-center gap-2"
+              >
+                <FileDown className="h-4 w-4" />
+                <span>Download Catalog (CSV)</span>
+              </Button>
+            </div>
           </div>
           
           {/* Product Categories */}
@@ -67,8 +204,8 @@ const Products: React.FC = () => {
               
               <TabsContent value="all" className="mt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => (
+                  {paginatedProducts.length > 0 ? (
+                    paginatedProducts.map((product) => (
                       <ProductCard 
                         key={product.id}
                         id={product.id}
@@ -89,8 +226,8 @@ const Products: React.FC = () => {
               {productCategories.map((category) => (
                 <TabsContent key={category.id} value={category.id} className="mt-0">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredProducts.length > 0 ? (
-                      filteredProducts.map((product) => (
+                    {paginatedProducts.length > 0 ? (
+                      paginatedProducts.map((product) => (
                         <ProductCard 
                           key={product.id}
                           id={product.id}
@@ -109,6 +246,52 @@ const Products: React.FC = () => {
                 </TabsContent>
               ))}
             </Tabs>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination className="mt-8">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                      className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, idx) => {
+                    let pageNum = idx + 1;
+                    
+                    // If current page is > 3 and total pages > 5, adjust displayed pages
+                    if (page > 3 && totalPages > 5) {
+                      pageNum = page + idx - 2;
+                      if (pageNum < 1) pageNum = 1;
+                      if (pageNum > totalPages) pageNum = totalPages;
+                    }
+                    
+                    return (
+                      <PaginationItem key={idx}>
+                        <PaginationLink 
+                          onClick={() => setPage(pageNum)}
+                          isActive={page === pageNum}
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                      className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
           
           {/* Download Catalog Section */}
@@ -117,9 +300,9 @@ const Products: React.FC = () => {
             <p className="text-gray-700 mb-6">
               Download our complete product catalog for detailed specifications, pricing information, and more.
             </p>
-            <button className="bg-telecom-blue hover:bg-telecom-light-blue text-white px-6 py-3 rounded-md transition-colors">
+            <Button className="bg-telecom-blue hover:bg-telecom-light-blue text-white">
               Download Product Catalog (PDF)
-            </button>
+            </Button>
           </div>
         </Section>
       </main>

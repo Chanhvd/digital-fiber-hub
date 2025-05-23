@@ -71,6 +71,102 @@ const productsToCSV = (productsToExport: Product[]): string => {
   return [headers.join(','), ...rows].join('\n');
 };
 
+// Parse CSV content to products array
+const parseCSVToProducts = (csvContent: string): Product[] => {
+  const lines = csvContent.split('\n');
+  
+  // Extract headers (first line)
+  const headers = lines[0].split(',');
+  
+  // Process data rows (skip header)
+  const parsedProducts: Product[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue; // Skip empty lines
+    
+    const values = parseCSVRow(lines[i]);
+    if (values.length < headers.length) continue; // Skip malformed rows
+    
+    // Create product object from CSV row
+    const product: Partial<Product> = {};
+    
+    headers.forEach((header, index) => {
+      let value = values[index];
+      
+      // Remove surrounding quotes if present
+      if (value && value.startsWith('"') && value.endsWith('"')) {
+        value = value.substring(1, value.length - 1).replace(/""/g, '"');
+      }
+      
+      switch (header.trim()) {
+        case 'id':
+          product.id = value || `product-${Date.now()}-${i}`;
+          break;
+        case 'title':
+          product.title = value;
+          break;
+        case 'code':
+          product.code = value;
+          break;
+        case 'description':
+          product.description = value;
+          break;
+        case 'imageUrl':
+          product.imageUrl = value;
+          break;
+        case 'category':
+          product.category = value;
+          break;
+        case 'published':
+          product.published = value.toLowerCase() === 'true';
+          break;
+        case 'fullDescription':
+          if (value) product.fullDescription = value;
+          break;
+      }
+    });
+    
+    // Add only if we have required fields
+    if (product.title && product.description) {
+      parsedProducts.push(product as Product);
+    }
+  }
+  
+  return parsedProducts;
+};
+
+// Helper function to parse CSV row correctly (handling quoted fields with commas)
+const parseCSVRow = (row: string): string[] => {
+  const result = [];
+  let insideQuotes = false;
+  let currentValue = '';
+  
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i];
+    
+    if (char === '"') {
+      // Handle quote - if previous char is also quote, it's an escaped quote
+      if (i + 1 < row.length && row[i + 1] === '"') {
+        currentValue += '"';
+        i++; // Skip next quote
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === ',' && !insideQuotes) {
+      // End of field
+      result.push(currentValue);
+      currentValue = '';
+    } else {
+      // Regular character
+      currentValue += char;
+    }
+  }
+  
+  // Add the last field
+  result.push(currentValue);
+  return result;
+};
+
 export const productService = {
   // Get all products
   getProducts: (): Product[] => {
@@ -152,5 +248,26 @@ export const productService = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  },
+  
+  // Import products from CSV content
+  importFromCSV: (csvContent: string): Product[] => {
+    const importedProducts = parseCSVToProducts(csvContent);
+    
+    // Add imported products (avoiding duplicates by ID)
+    importedProducts.forEach(newProduct => {
+      const existingIndex = products.findIndex(p => p.id === newProduct.id);
+      if (existingIndex >= 0) {
+        // Update existing product
+        products[existingIndex] = { ...products[existingIndex], ...newProduct };
+      } else {
+        // Add new product
+        products.push(newProduct);
+      }
+    });
+    
+    saveProducts();
+    return [...products];
   }
 };
+
